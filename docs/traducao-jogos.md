@@ -2,9 +2,20 @@
 
 Integração autorizada em 21/10/2026, após avaliação documental. Implementada localmente; credencial criada pelo proprietário e amostras reais salvas, com conferência local confirmada pelo proprietário em 21/10/2026. Nenhuma conta, plano pago, faturamento, Worker público ou deploy foi criado.
 
+## Manutenção do modelo — 06/11/2026
+
+Substituição preparada localmente do Qwen 3 pelo Gemma 4, devido à descontinuação
+do modelo anterior em 20/11/2026. Três amostras sintéticas reais passaram pelo
+adaptador (2,4–5,1 segundos), com consumo estimado de 20 neurons pelos tokens
+informados. Não houve gravação no banco; a publicação da atualização está pendente.
+A chamada usa `max_completion_tokens: 3072` e raciocínio explicitamente desativado,
+preservando timeout, validações, orçamento diário e espera entre tentativas.
+Traduções antigas continuam visíveis quando vinculadas ao original atual; uma
+reconfirmação explícita pode atualizá-las para o novo modelo, sem varredura automática.
+
 ## Fluxo e segurança
 
-- Adaptador nativo fetch, sem SDK/dependência nova. Endpoint fixo api.cloudflare.com e modelo fixo @cf/qwen/qwen3-30b-a3b-fp8. Nenhuma entrada do visitante escolhe modelo, host ou prompt.
+- Adaptador nativo fetch, sem SDK/dependência nova. Endpoint fixo api.cloudflare.com e modelo fixo @cf/google/gemma-4-26b-a4b-it. Nenhuma entrada do visitante escolhe modelo, host ou prompt.
 - Ativação explícita no servidor: CLIPZONE_TRANSLATION_ENABLED=true, CLOUDFLARE_ACCOUNT_ID e CLOUDFLARE_AI_TOKEN, somente em .env.server.local (ignorado pelo Git). O token deve ser restrito à conta e permissões Workers AI Read/Edit. O proprietário cria e salva a credencial; não enviá-la pelo chat. Permanecer em Workers Free, sem créditos pré-pagos/AI Gateway nem faturamento.
 - Cadastro/confirmação por ID usa o fluxo IGDB existente. Após confirmar o registro, o serviço tenta traduzir sua descrição persistida. Jogos antigos podem ser reconfirmados no seletor para receber a tradução. Não há varredura, migração nem tradução em acesso à ficha. A atualização automática dos metadados IGDB não foi acrescentada.
 - description e officialName permanecem originais. games/{id}.translation armazena texto pt-BR, locale, modelo, hash da fonte/nomes/versão, cópia da descrição e nome usados e data. A ficha só mostra a tradução se estiver vinculada ao original e nome atuais; permite expandir Ver descrição original e indica tradução automática.
