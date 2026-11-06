@@ -7,6 +7,7 @@ import os from 'node:os'
 import cp from 'node:child_process'
 import http from 'node:http'
 import {gzipSync} from 'node:zlib'
+import {PassThrough} from 'node:stream'
 const require=createRequire(import.meta.url),firebase=createRequire(require.resolve('firebase-tools/package.json'))
 
 test('Firebase CLI loads and prints its version without using the owner credential/config directory',()=>{
@@ -54,3 +55,55 @@ for(const variant of ['firebase','mcp'])test('body-parser '+variant+' handles va
   assert.equal(bad.status,400)
  }finally{await new Promise(resolve=>server.close(resolve))}
 })
+
+const fixture=fs.mkdtempSync(path.join(os.tmpdir(),'clipzone-glob-compat-'))
+for(const dir of ['src','src/nested','.firebase','controllers'])fs.mkdirSync(path.join(fixture,dir),{recursive:true})
+for(const [file,text] of Object.entries({'package.json':'{"type":"commonjs"}','src/a.js':'module.exports=1','src/a.test.js':'module.exports=2','src/nested/b.js':'module.exports=3','.hidden.txt':'hidden','.firebase/private.txt':'fixture','firebase-debug.log':'fixture','controllers/index.js':'module.exports={index:true}','controllers/item.js':'module.exports={item:true}'}))fs.writeFileSync(path.join(fixture,file),text)
+const normalize=items=>items.map(p=>p.replaceAll('\\','/')).sort()
+
+test('glob corrigido mantém APIs síncrona e assíncrona, exclusões e arquivos ocultos',async()=>{
+ const glob=require('glob'),options={cwd:fixture,nodir:true,ignore:['**/*.test.js'],posix:true}
+ assert.deepEqual(normalize(glob.sync('src/**/*.js',options)),['src/a.js','src/nested/b.js'])
+ assert.deepEqual(normalize(await glob.glob('src/**/*.js',options)),['src/a.js','src/nested/b.js'])
+ assert.ok(glob.sync('**/*',{cwd:fixture,nodir:true,dot:true}).includes('.hidden.txt'))
+ const controller=new AbortController();controller.abort();await assert.rejects(glob.glob('**/*',{cwd:fixture,signal:controller.signal}))
+})
+
+test('minimatch corrigido mantém correspondência, classes, globstar e extglob usados pelas ferramentas',()=>{
+ const mm=require('minimatch')
+ for(const name of ['src/a.js','src/nested/b.js'])assert.ok(mm.minimatch(name,'src/**/*.js'))
+ assert.ok(!mm.minimatch('src/a.txt','src/**/*.js'));assert.ok(mm.minimatch('src/a.js','src/[ab].js'))
+ const pattern=new mm.Minimatch('src/**/!(*.test).js');assert.ok(pattern.match('src/a.js'));assert.ok(!pattern.match('src/a.test.js'))
+ assert.deepEqual(mm.braceExpand('file{1,2}.txt'),['file1.txt','file2.txt'])
+ assert.ok(mm.minimatch('.hidden.txt','*',{dot:true}))
+})
+
+test('Firebase CLI e archiver-utils preservam seleção real de arquivos',()=>{
+ const {listFiles}=require('firebase-tools/lib/listFiles.js')
+ const files=normalize(listFiles(fixture,['**/*.test.js']))
+ assert.ok(files.includes('src/a.js'));assert.ok(files.includes('.hidden.txt'))
+ assert.ok(!files.includes('src/a.test.js'));assert.ok(!files.includes('firebase-debug.log'));assert.ok(!files.includes('.firebase/private.txt'))
+ const archiveFiles=require('archiver-utils/file.js').expand({cwd:fixture},['src/**/*.js','!**/*.test.js'])
+ assert.deepEqual(normalize(archiveFiles),['src/a.js','src/nested/b.js'])
+})
+
+test('exegesis mantém carregamento síncrono dos controladores',()=>{
+ const {loadControllersSync}=require('exegesis/lib/controllers/loadControllers.js')
+ const controllers=loadControllersSync(path.join(fixture,'controllers'))
+ assert.equal(controllers.item.item,true);assert.equal(controllers.index.index,true)
+})
+
+test('archiver mantém geração ZIP de fixtures sem dados do projeto',async()=>{
+ const archive=require('archiver')('zip'),stream=new PassThrough(),chunks=[]
+ const ended=new Promise((resolve,reject)=>{stream.on('data',b=>chunks.push(b));stream.on('end',resolve);stream.on('error',reject);archive.on('error',reject)})
+ archive.pipe(stream);archive.glob('src/**/*.js',{cwd:fixture,ignore:['**/*.test.js']});await archive.finalize();await ended
+ const zip=Buffer.concat(chunks);assert.ok(zip.length>0);assert.equal(zip.readUInt32LE(0),0x04034b50)
+})
+
+test('rimraf com glob atua somente sobre arquivo de fixture explicitamente delimitado',async()=>{
+ const target=path.resolve(fixture,'remove.tmp');assert.ok(target.startsWith(path.resolve(fixture)+path.sep));fs.writeFileSync(target,'fixture-only')
+ await require('rimraf').rimraf(target.replaceAll('\\','/'),{glob:true});assert.ok(!fs.existsSync(target));assert.ok(fs.existsSync(path.join(fixture,'src/a.js')))
+})
+
+
+test.after(()=>{const target=path.resolve(fixture);assert.equal(path.dirname(target),path.resolve(os.tmpdir()));assert.ok(path.basename(target).startsWith('clipzone-glob-compat-'));fs.rmSync(target,{recursive:true,force:true})})

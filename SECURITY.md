@@ -34,12 +34,21 @@ credenciais automaticamente; essas operações exigem decisão específica.
 
 ## Dependências de desenvolvimento
 
-As substituições transitivas em `package.json` se restringem ao Firebase CLI:
+Há substituições transitivas em `package.json` associadas ao Firebase CLI:
 `@google-cloud/pubsub → @opentelemetry/core@2.8.0` e `gaxios → uuid@11.1.1`.
 Corrigem alertas em linhas antigas sem fazer downgrade do CLI. São mudanças de
 versão principal nessas dependências transitivas e exigem os testes de
 compatibilidade mantidos em `tests/security-toolchain.test.mjs` a cada revisão.
 Não as copie para o runtime Workers ou remova sem nova análise.
+
+Desde 06/11/2026, as faixas vulneráveis de `glob` (9 até 14.0.1) e
+`minimatch` (7 até antes de 11.0.1) usam, respectivamente, 14.0.2 e 11.0.1
+por overrides seletivos. As linhas antigas não afetadas de minimatch permanecem
+intactas. Isso mantém as versões principais de ESLint e Firebase CLI, mas altera
+versões principais transitivas: os testes de compatibilidade cobrem as APIs
+utilizadas atualmente, não toda API antiga (como `Minimatch.makeRe`, removida).
+Reavaliar essas regras quando as ferramentas adotarem as correções oficialmente;
+não reduzir o nível da auditoria nem usar `npm audit fix --force` como atalho.
 
 ## Verificações no GitHub
 
