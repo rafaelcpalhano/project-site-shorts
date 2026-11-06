@@ -4,10 +4,13 @@ Integração autorizada em 21/10/2026, após avaliação documental. Implementad
 
 ## Manutenção do modelo — 06/11/2026
 
-Substituição preparada localmente do Qwen 3 pelo Gemma 4, devido à descontinuação
+Substituição do Qwen 3 pelo Gemma 4 publicada em 06/11/2026, devido à descontinuação
 do modelo anterior em 20/11/2026. Três amostras sintéticas reais passaram pelo
 adaptador (2,4–5,1 segundos), com consumo estimado de 20 neurons pelos tokens
-informados. Não houve gravação no banco; a publicação da atualização está pendente.
+informados. Validações locais: 914 testes, tipos, build, lint, scanner de segredos e dry-run
+aprovados. Versão ativa: `a3cbd8e7-7075-464f-8006-448add2d1ef4`. Conferência
+pós-deploy: 43 arquivos públicos com hashes preservados e três rotas HTML aprovadas;
+sem novas inferências ou acesso ao banco nessa publicação.
 A chamada usa `max_completion_tokens: 3072` e raciocínio explicitamente desativado,
 preservando timeout, validações, orçamento diário e espera entre tentativas.
 Traduções antigas continuam visíveis quando vinculadas ao original atual; uma
